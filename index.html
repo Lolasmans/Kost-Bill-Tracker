@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tagihan Kost</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#2d6cdf">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tagihan Kost">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #222; }
+  header { background: #2d6cdf; color: #fff; padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 18px; }
+  header button { background: rgba(255,255,255,.18); color: #fff; padding: 7px 10px; }
+  main { padding: 12px; max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
+  .card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .name { font-weight: 600; }
+  .sub { font-size: 13px; color: #666; margin-top: 2px; }
+  .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
+  .lunas { background: #d7f5df; color: #1a7a3a; }
+  .belum { background: #fff1d6; color: #8a5a00; }
+  .telat { background: #fde2e1; color: #b3261e; }
+  button { font: inherit; border: none; border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+  .btn { background: #2d6cdf; color: #fff; }
+  .btn-light { background: #e8eefc; color: #2d6cdf; }
+  .btn-wa { background: #25d366; color: #fff; }
+  .btn-danger { background: #fde2e1; color: #b3261e; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  input, select { font: inherit; padding: 9px; border: 1px solid #ccc; border-radius: 8px; width: 100%; background: #fff; }
+  label { font-size: 12px; color: #555; display: block; margin-bottom: 3px; }
+  .hidden { display: none; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid .full { grid-column: 1 / -1; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { background: #fff; border-radius: 10px; padding: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .stat b { display: block; font-size: 16px; }
+  .stat span { font-size: 12px; color: #666; }
+  .filters { display: flex; gap: 6px; margin-bottom: 10px; }
+  .chip { background: #fff; color: #444; border: 1px solid #ddd; padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+  .chip.on { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
+  .empty { text-align: center; color: #888; padding: 24px 0; }
+  .menu h3 { margin: 0 0 8px; font-size: 15px; }
+  .menu p { font-size: 13px; color: #666; margin: 4px 0 10px; }
+  @media (max-width: 380px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tagihan Kost</h1>
+  <button onclick="toggle('menu')">⋮ Data</button>
+</header>
+<main>
+  <div class="card menu hidden" id="menu">
+    <h3>Cadangan data</h3>
+    <p>Data hanya tersimpan di HP ini. Simpan cadangan secara rutin, terutama sebelum ganti HP atau hapus data browser.</p>
+    <div class="actions">
+      <button class="btn" onclick="eksporJSON()">Simpan cadangan</button>
+      <button class="btn-light" onclick="document.getElementById('fileImpor').click()">Pulihkan cadangan</button>
+      <button class="btn-light" onclick="eksporCSV()">Ekspor bulan ini (CSV/Excel)</button>
+    </div>
+    <input type="file" id="fileImpor" accept=".json,application/json" class="hidden" onchange="imporJSON(this)">
+    <h3 style="margin-top:14px">Template pesan pengingat</h3>
+    <p>Kata kunci: {nama}, {kamar}, {bulan}, {jumlah}, {tempo}</p>
+    <textarea id="template" rows="4" style="width:100%;font:inherit;padding:9px;border:1px solid #ccc;border-radius:8px"></textarea>
+    <div class="actions"><button class="btn" onclick="simpanTemplate()">Simpan template</button></div>
+  </div>
+
+  <div class="toolbar">
+    <select id="bulan" style="flex:1"></select>
+    <button class="btn" onclick="bukaForm()">+ Penghuni</button>
+  </div>
+
+  <div class="card hidden" id="form">
+    <div class="grid">
+      <div class="full"><label>Nama penghuni *</label><input id="fNama"></div>
+      <div><label>Kamar</label><input id="fKamar" placeholder="mis. A1"></div>
+      <div><label>No. WhatsApp</label><input id="fHp" inputmode="tel" placeholder="0812..."></div>
+      <div><label>Tagihan / bulan (Rp) *</label><input id="fTagihan" type="number" inputmode="numeric"></div>
+      <div><label>Jatuh tempo (tgl 1–28)</label><input id="fJatuhTempo" type="number" inputmode="numeric" min="1" max="28"></div>
+      <div><label>Mulai tinggal (bulan)</label><input id="fMulai" type="month"></div>
+      <div><label>Keluar (kosongkan jika masih)</label><input id="fKeluar" type="month"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" onclick="simpanPenghuni()">Simpan</button>
+      <button class="btn-light" onclick="tutupForm()">Batal</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="sLunas">0/0</b><span>Lunas</span></div>
+    <div class="stat"><b id="sMasuk">Rp 0</b><span>Masuk</span></div>
+    <div class="stat"><b id="sSisa">Rp 0</b><span>Belum masuk</span></div>
+  </div>
+
+  <div class="filters">
+    <button class="chip on" data-f="semua" onclick="setFilter('semua')">Semua</button>
+    <button class="chip" data-f="belum" onclick="setFilter('belum')">Belum bayar</button>
+    <button class="chip" data-f="lunas" onclick="setFilter('lunas')">Lunas</button>
+  </div>
+
+  <div id="daftar"></div>
+</main>
+
+<script>
+const KEY = 'tagihanKost.v1';
+const TEMPLATE_DEFAULT = 'Halo {nama}, ini pengingat pembayaran kost{kamar} untuk bulan {bulan} sebesar {jumlah}. Jatuh tempo tanggal {tempo}. Terima kasih.';
+
+function muat() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || { penghuni: [] }; }
+  catch (e) { return { penghuni: [] }; }
+}
+let data = muat();
+if (!Array.isArray(data.penghuni)) data.penghuni = [];
+let editId = null;
+let filter = 'semua';
+
+function simpan() {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch (e) { alert('Gagal menyimpan data di HP ini. Simpan cadangan lewat menu Data.'); }
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function rupiah(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function keyBulan(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function namaBulan(b) { const [y, m] = b.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }); }
+function bulanDipilih() { return document.getElementById('bulan').value; }
+function toggle(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+function nomorWA(hp) {
+  let n = String(hp || '').replace(/\D/g, '');
+  if (n.startsWith('0')) n = '62' + n.slice(1);
+  return n;
+}
+
+function isiPilihanBulan() {
+  const sel = document.getElementById('bulan');
+  const now = new Date();
+  sel.innerHTML = '';
+  for (let i = 2; i >= -12; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const opt = document.createElement('option');
+    opt.value = keyBulan(d);
+    opt.textContent = namaBulan(opt.value);
+    sel.appendChild(opt);
+  }
+  sel.value = keyBulan(now);
+  sel.onchange = render;
+}
+
+function aktifDiBulan(p, b) {
+  if (p.mulai && b < p.mulai) return false;
+  if (p.keluar && b > p.keluar) return false;
+  return true;
+}
+
+function statusBayar(p, b) {
+  if (p.bayar && p.bayar[b]) return 'lunas';
+  const now = new Date();
+  const kini = keyBulan(now);
+  if (b < kini || (b === kini && now.getDate() > (p.jatuhTempo || 1))) return 'telat';
+  return 'belum';
+}
+
+function bukaForm(p) {
+  editId = p ? p.id : null;
+  const set = (id, v) => document.getElementById(id).value = v ?? '';
+  set('fNama', p?.nama); set('fKamar', p?.kamar); set('fHp', p?.hp);
+  set('fTagihan', p?.tagihan); set('fJatuhTempo', p?.jatuhTempo);
+  set('fMulai', p ? p.mulai : bulanDipilih()); set('fKeluar', p?.keluar);
+  document.getElementById('form').classList.remove('hidden');
+  document.getElementById('fNama').focus();
+}
+function tutupForm() { editId = null; document.getElementById('form').classList.add('hidden'); }
+
+function simpanPenghuni() {
+  const val = id => document.getElementById(id).value.trim();
+  const nama = val('fNama');
+  const tagihan = Number(val('fTagihan'));
+  if (!nama || !tagihan) { alert('Nama dan tagihan wajib diisi.'); return; }
+  const lama = editId ? data.penghuni.find(x => x.id === editId) : null;
+  const obj = {
+    id: editId || uid(),
+    nama,
+    kamar: val('fKamar'),
+    hp: val('fHp').replace(/[^\d+]/g, ''),
+    tagihan,
+    jatuhTempo: Math.min(28, Math.max(1, Number(val('fJatuhTempo')) || 1)),
+    mulai: val('fMulai'),
+    keluar: val('fKeluar'),
+    bayar: lama ? (lama.bayar || {}) : {}
+  };
+  if (lama) data.penghuni = data.penghuni.map(x => x.id === editId ? obj : x);
+  else data.penghuni.push(obj);
+  simpan(); tutupForm(); render();
+}
+
+function hapus(id) {
+  const p = data.penghuni.find(x => x.id === id);
+  if (!confirm(`Hapus ${p.nama} beserta seluruh riwayat pembayarannya?\n\nKalau penghuni hanya pindah keluar, lebih baik isi kolom "Keluar" lewat Edit.`)) return;
+  data.penghuni = data.penghuni.filter(x => x.id !== id);
+  simpan(); render();
+}
+
+function togglePaid(id) {
+  const b = bulanDipilih();
+  const p = data.penghuni.find(x => x.id === id);
+  p.bayar = p.bayar || {};
+  if (p.bayar[b]) {
+    if (!confirm('Batalkan status lunas untuk bulan ini?')) return;
+    delete p.bayar[b];
+  } else {
+    const d = new Date();
+    p.bayar[b] = keyBulan(d) + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  simpan(); render();
+}
+
+function getTemplate() { return data.template || TEMPLATE_DEFAULT; }
+function simpanTemplate() {
+  data.template = document.getElementById('template').value.trim() || TEMPLATE_DEFAULT;
+  simpan(); alert('Template disimpan.');
+}
+
+function kirimPengingat(id) {
+  const b = bulanDipilih();
+  const p = data.penghuni.find(x => x.id === id);
+  const no = nomorWA(p.hp);
+  if (!no) { alert('Nomor WhatsApp belum diisi. Tekan Edit untuk menambahkannya.'); return; }
+  const pesan = getTemplate()
+    .replaceAll('{nama}', p.nama)
+    .replaceAll('{kamar}', p.kamar ? ' kamar ' + p.kamar : '')
+    .replaceAll('{bulan}', namaBulan(b))
+    .replaceAll('{jumlah}', rupiah(p.tagihan))
+    .replaceAll('{tempo}', p.jatuhTempo);
+  window.open('https://wa.me/' + no + '?text=' + encodeURIComponent(pesan), '_blank');
+}
+
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.f === f));
+  render();
+}
+
+function render() {
+  const b = bulanDipilih();
+  const aktif = data.penghuni
+    .filter(p => aktifDiBulan(p, b))
+    .sort((x, y) => (x.kamar || '').localeCompare(y.kamar || '', 'id', { numeric: true }));
+
+  let lunas = 0, masuk = 0, total = 0;
+  aktif.forEach(p => { total += p.tagihan; if (p.bayar?.[b]) { lunas++; masuk += p.tagihan; } });
+  document.getElementById('sLunas').textContent = `${lunas}/${aktif.length}`;
+  document.getElementById('sMasuk').textContent = rupiah(masuk);
+  document.getElementById('sSisa').textContent = rupiah(total - masuk);
+
+  const list = aktif.filter(p => filter === 'semua' || (filter === 'lunas') === !!p.bayar?.[b]);
+  const daftar = document.getElementById('daftar');
+
+  if (!data.penghuni.length) { daftar.innerHTML = '<div class="empty">Belum ada penghuni.<br>Tekan "+ Penghuni" untuk mulai.</div>'; return; }
+  if (!list.length) { daftar.innerHTML = '<div class="empty">Tidak ada penghuni di kategori ini.</div>'; return; }
+
+  const label = { lunas: 'Lunas', belum: 'Belum', telat: 'Telat' };
+  daftar.innerHTML = list.map(p => {
+    const st = statusBayar(p, b);
+    const sudah = st === 'lunas';
+    return `
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="name">${esc(p.nama)}${p.kamar ? ' · ' + esc(p.kamar) : ''}</div>
+          <div class="sub">${rupiah(p.tagihan)} · tempo tgl ${p.jatuhTempo}${sudah ? ' · dibayar ' + esc(p.bayar[b]) : ''}</div>
+        </div>
+        <span class="badge ${st}">${label[st]}</span>
+      </div>
+      <div class="actions">
+        <button class="${sudah ? 'btn-light' : 'btn'}" onclick="togglePaid('${p.id}')">${sudah ? 'Batalkan lunas' : 'Tandai lunas'}</button>
+        ${!sudah ? `<button class="btn-wa" onclick="kirimPengingat('${p.id}')">Pengingat WA</button>` : ''}
+        <button class="btn-light" onclick="bukaForm(data.penghuni.find(x => x.id === '${p.id}'))">Edit</button>
+        <button class="btn-danger" onclick="hapus('${p.id}')">Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function unduh(nama, isi, tipe) {
+  const blob = new Blob([isi], { type: tipe });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nama;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function eksporJSON() {
+  const tgl = new Date().toISOString().slice(0, 10);
+  unduh(`cadangan-tagihan-kost-${tgl}.json`, JSON.stringify(data, null, 2), 'application/json');
+}
+
+function imporJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const baru = JSON.parse(r.result);
+      if (!Array.isArray(baru.penghuni)) throw new Error('format');
+      if (!confirm(`Pulihkan ${baru.penghuni.length} penghuni dari cadangan? Data di HP ini akan diganti.`)) return;
+      data = baru; simpan();
+      document.getElementById('template').value = getTemplate();
+      render(); alert('Data berhasil dipulihkan.');
+    } catch (e) { alert('File cadangan tidak valid.'); }
+    input.value = '';
+  };
+  r.readAsText(file);
+}
+
+function eksporCSV() {
+  const b = bulanDipilih();
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const baris = [['Kamar', 'Nama', 'No WA', 'Tagihan', 'Jatuh tempo', 'Status', 'Tanggal bayar'].map(q).join(';')];
+  data.penghuni.filter(p => aktifDiBulan(p, b)).forEach(p => {
+    const st = statusBayar(p, b);
+    baris.push([p.kamar, p.nama, p.hp, p.tagihan, p.jatuhTempo, st, p.bayar?.[b] || ''].map(q).join(';'));
+  });
+  unduh(`tagihan-kost-${b}.csv`, '﻿' + baris.join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+isiPilihanBulan();
+document.getElementById('template').value = getTemplate();
+render();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
