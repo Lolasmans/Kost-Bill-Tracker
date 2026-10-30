@@ -11,43 +11,81 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tagihan Kost">
+<meta name="color-scheme" content="light dark">
+<script>
+  // Terapkan tema sebelum halaman tampil, supaya tidak berkedip putih.
+  try { const t = localStorage.getItem('tagihanKost.tema'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f5f7; --card: #fff; --text: #222; --muted: #666; --border: #ccc; --chip-border: #ddd;
+    --header: #2d6cdf; --primary: #2d6cdf; --primary-text: #fff;
+    --light-bg: #e8eefc; --light-text: #2d6cdf;
+    --ok-bg: #d7f5df; --ok-text: #1a7a3a;
+    --warn-bg: #fff1d6; --warn-text: #8a5a00;
+    --bad-bg: #fde2e1; --bad-text: #b3261e;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #121417; --card: #1d2026; --text: #e8e9ec; --muted: #9aa0aa; --border: #3a3f48; --chip-border: #3a3f48;
+      --header: #1a2b4d; --primary: #4b86ef; --primary-text: #fff;
+      --light-bg: #24324d; --light-text: #a9c4ff;
+      --ok-bg: #173822; --ok-text: #7ee29a;
+      --warn-bg: #3d2f12; --warn-text: #f3c56b;
+      --bad-bg: #431d1b; --bad-text: #ff9f97;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #121417; --card: #1d2026; --text: #e8e9ec; --muted: #9aa0aa; --border: #3a3f48; --chip-border: #3a3f48;
+    --header: #1a2b4d; --primary: #4b86ef; --primary-text: #fff;
+    --light-bg: #24324d; --light-text: #a9c4ff;
+    --ok-bg: #173822; --ok-text: #7ee29a;
+    --warn-bg: #3d2f12; --warn-text: #f3c56b;
+    --bad-bg: #431d1b; --bad-text: #ff9f97;
+    --shadow: none;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #222; }
-  header { background: #2d6cdf; color: #fff; padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--header); color: #fff; padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); position: sticky; top: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; }
   header h1 { margin: 0; font-size: 18px; }
   header button { background: rgba(255,255,255,.18); color: #fff; padding: 7px 10px; }
   main { padding: 12px; max-width: 600px; margin: 0 auto; padding-bottom: 40px; }
-  .card { background: #fff; border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card { background: var(--card); border-radius: 10px; padding: 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
   .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .name { font-weight: 600; }
-  .sub { font-size: 13px; color: #666; margin-top: 2px; }
+  .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
   .badge { font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
-  .lunas { background: #d7f5df; color: #1a7a3a; }
-  .belum { background: #fff1d6; color: #8a5a00; }
-  .telat { background: #fde2e1; color: #b3261e; }
+  .lunas { background: var(--ok-bg); color: var(--ok-text); }
+  .belum { background: var(--warn-bg); color: var(--warn-text); }
+  .telat { background: var(--bad-bg); color: var(--bad-text); }
   button { font: inherit; border: none; border-radius: 8px; padding: 9px 12px; cursor: pointer; }
-  .btn { background: #2d6cdf; color: #fff; }
-  .btn-light { background: #e8eefc; color: #2d6cdf; }
-  .btn-wa { background: #25d366; color: #fff; }
-  .btn-danger { background: #fde2e1; color: #b3261e; }
+  .btn { background: var(--primary); color: var(--primary-text); }
+  .btn-light { background: var(--light-bg); color: var(--light-text); }
+  .btn-wa { background: #1fa855; color: #fff; }
+  .btn-danger { background: var(--bad-bg); color: var(--bad-text); }
   .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-  input, select { font: inherit; padding: 9px; border: 1px solid #ccc; border-radius: 8px; width: 100%; background: #fff; }
-  label { font-size: 12px; color: #555; display: block; margin-bottom: 3px; }
+  input, select, textarea { font: inherit; padding: 9px; border: 1px solid var(--border); border-radius: 8px; width: 100%; background: var(--card); color: var(--text); }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
   .hidden { display: none; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .grid .full { grid-column: 1 / -1; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-  .stat { background: #fff; border-radius: 10px; padding: 10px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .stat { background: var(--card); border-radius: 10px; padding: 10px; text-align: center; box-shadow: var(--shadow); }
   .stat b { display: block; font-size: 16px; }
-  .stat span { font-size: 12px; color: #666; }
+  .stat span { font-size: 12px; color: var(--muted); }
   .filters { display: flex; gap: 6px; margin-bottom: 10px; }
-  .chip { background: #fff; color: #444; border: 1px solid #ddd; padding: 6px 12px; border-radius: 999px; font-size: 13px; }
-  .chip.on { background: #2d6cdf; color: #fff; border-color: #2d6cdf; }
-  .empty { text-align: center; color: #888; padding: 24px 0; }
+  .chip { background: var(--card); color: var(--text); border: 1px solid var(--chip-border); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
+  .chip.on { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+  .tema .chip { flex: 1; }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; }
   .menu h3 { margin: 0 0 8px; font-size: 15px; }
-  .menu p { font-size: 13px; color: #666; margin: 4px 0 10px; }
+  .menu p { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
   @media (max-width: 380px) { .grid { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -58,7 +96,13 @@
 </header>
 <main>
   <div class="card menu hidden" id="menu">
-    <h3>Cadangan data</h3>
+    <h3>Tampilan</h3>
+    <div class="filters tema">
+      <button class="chip" data-tema="auto" onclick="setTema('auto')">Ikuti HP</button>
+      <button class="chip" data-tema="light" onclick="setTema('light')">Terang</button>
+      <button class="chip" data-tema="dark" onclick="setTema('dark')">Gelap</button>
+    </div>
+    <h3 style="margin-top:14px">Cadangan data</h3>
     <p>Data hanya tersimpan di HP ini. Simpan cadangan secara rutin, terutama sebelum ganti HP atau hapus data browser.</p>
     <div class="actions">
       <button class="btn" onclick="eksporJSON()">Simpan cadangan</button>
@@ -68,7 +112,7 @@
     <input type="file" id="fileImpor" accept=".json,application/json" class="hidden" onchange="imporJSON(this)">
     <h3 style="margin-top:14px">Template pesan pengingat</h3>
     <p>Kata kunci: {nama}, {kamar}, {bulan}, {jumlah}, {tempo}</p>
-    <textarea id="template" rows="4" style="width:100%;font:inherit;padding:9px;border:1px solid #ccc;border-radius:8px"></textarea>
+    <textarea id="template" rows="4"></textarea>
     <div class="actions"><button class="btn" onclick="simpanTemplate()">Simpan template</button></div>
   </div>
 
@@ -244,7 +288,7 @@ function kirimPengingat(id) {
 
 function setFilter(f) {
   filter = f;
-  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.dataset.f === f));
+  document.querySelectorAll('.chip[data-f]').forEach(c => c.classList.toggle('on', c.dataset.f === f));
   render();
 }
 
@@ -331,6 +375,24 @@ function eksporCSV() {
   });
   unduh(`tagihan-kost-${b}.csv`, '﻿' + baris.join('\r\n'), 'text/csv;charset=utf-8');
 }
+
+const TEMA_KEY = 'tagihanKost.tema';
+const gelapSistem = window.matchMedia('(prefers-color-scheme: dark)');
+function temaAktif() { try { return localStorage.getItem(TEMA_KEY) || 'auto'; } catch (e) { return 'auto'; } }
+function terapkanTema() {
+  const t = temaAktif();
+  if (t === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+  const gelap = t === 'dark' || (t === 'auto' && gelapSistem.matches);
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', gelap ? '#1a2b4d' : '#2d6cdf');
+  document.querySelectorAll('.chip[data-tema]').forEach(c => c.classList.toggle('on', c.dataset.tema === t));
+}
+function setTema(t) {
+  try { if (t === 'auto') localStorage.removeItem(TEMA_KEY); else localStorage.setItem(TEMA_KEY, t); } catch (e) {}
+  terapkanTema();
+}
+gelapSistem.addEventListener('change', terapkanTema);
+terapkanTema();
 
 isiPilihanBulan();
 document.getElementById('template').value = getTemplate();
