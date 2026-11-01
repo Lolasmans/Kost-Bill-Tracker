@@ -1,6 +1,6 @@
 // Service worker: menyimpan file aplikasi agar bisa dibuka tanpa internet.
 // Naikkan nomor versi setiap kali file aplikasi diubah.
-const CACHE = 'tagihan-kost-v3';
+const CACHE = 'tagihan-kost-v4';
 const FILES = [
   './',
   './index.html',

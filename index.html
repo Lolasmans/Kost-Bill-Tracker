@@ -77,12 +77,19 @@
   .grid .full { grid-column: 1 / -1; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
   .stat { background: var(--card); border-radius: 10px; padding: 10px; text-align: center; box-shadow: var(--shadow); }
-  .stat b { display: block; font-size: 16px; }
+  .stat b { display: block; font-size: clamp(12px, 3.6vw, 16px); white-space: nowrap; }
   .stat span { font-size: 12px; color: var(--muted); }
   .filters { display: flex; gap: 6px; margin-bottom: 10px; }
   .chip { background: var(--card); color: var(--text); border: 1px solid var(--chip-border); padding: 6px 12px; border-radius: 999px; font-size: 13px; }
   .chip.on { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
   .tema .chip { flex: 1; }
+  .tabs { display: flex; background: var(--card); border-radius: 10px; padding: 4px; margin-bottom: 10px; box-shadow: var(--shadow); }
+  .tabs button { flex: 1; background: transparent; color: var(--muted); padding: 8px; }
+  .tabs button.on { background: var(--primary); color: var(--primary-text); }
+  .neg { color: var(--bad-text); }
+  .pos { color: var(--ok-text); }
+  .kat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat { padding: 10px 6px; }
   .empty { text-align: center; color: var(--muted); padding: 24px 0; }
   .menu h3 { margin: 0 0 8px; font-size: 15px; }
   .menu p { font-size: 13px; color: var(--muted); margin: 4px 0 10px; }
@@ -118,7 +125,12 @@
 
   <div class="toolbar">
     <select id="bulan" style="flex:1"></select>
-    <button class="btn" onclick="bukaForm()">+ Penghuni</button>
+    <button class="btn" id="btnTambah" onclick="tambah()">+ Penghuni</button>
+  </div>
+
+  <div class="tabs">
+    <button data-tab="penghuni" onclick="setTab('penghuni')">Penghuni</button>
+    <button data-tab="pengeluaran" onclick="setTab('pengeluaran')">Pengeluaran</button>
   </div>
 
   <div class="card hidden" id="form">
@@ -137,6 +149,7 @@
     </div>
   </div>
 
+  <div id="tabPenghuni">
   <div class="stats">
     <div class="stat"><b id="sLunas">0/0</b><span>Lunas</span></div>
     <div class="stat"><b id="sMasuk">Rp 0</b><span>Masuk</span></div>
@@ -150,6 +163,40 @@
   </div>
 
   <div id="daftar"></div>
+  </div>
+
+  <div id="tabPengeluaran" class="hidden">
+    <div class="card hidden" id="formKeluar">
+      <div class="grid">
+        <div><label>Kategori</label>
+          <select id="kKategori" onchange="isiOtomatisKeluar()">
+            <option value="listrik">Listrik</option>
+            <option value="wifi">WiFi</option>
+            <option value="lainnya">Lainnya</option>
+          </select></div>
+        <div><label>Jumlah (Rp) *</label><input id="kJumlah" type="number" inputmode="numeric"></div>
+        <div><label>Tanggal bayar</label><input id="kTanggal" type="date"></div>
+        <div id="kKwhBox"><label>kWh (opsional)</label><input id="kKwh" type="number" inputmode="decimal" placeholder="mis. 120"></div>
+        <div class="full"><label>Catatan</label><input id="kCatatan" placeholder="mis. token 100rb, tagihan PLN, perbaikan router"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="simpanKeluar()">Simpan</button>
+        <button class="btn-light" onclick="tutupFormKeluar()">Batal</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="kMasuk">Rp 0</b><span>Pemasukan</span></div>
+      <div class="stat"><b id="kKeluar">Rp 0</b><span>Pengeluaran</span></div>
+      <div class="stat"><b id="kSaldo">Rp 0</b><span>Sisa bersih</span></div>
+    </div>
+    <div class="kat">
+      <div class="stat"><b id="kListrik">Rp 0</b><span>Listrik</span></div>
+      <div class="stat"><b id="kWifi">Rp 0</b><span>WiFi</span></div>
+      <div class="stat"><b id="kLain">Rp 0</b><span>Lainnya</span></div>
+    </div>
+    <div id="daftarKeluar"></div>
+  </div>
 </main>
 
 <script>
@@ -162,7 +209,13 @@ function muat() {
 }
 let data = muat();
 if (!Array.isArray(data.penghuni)) data.penghuni = [];
+if (!Array.isArray(data.pengeluaran)) data.pengeluaran = [];
 let editId = null;
+let editKeluarId = null;
+const KATEGORI = { listrik: 'Listrik', wifi: 'WiFi', lainnya: 'Lainnya' };
+const TAB_KEY = 'tagihanKost.tab';
+let tab = 'penghuni';
+try { if (localStorage.getItem(TAB_KEY) === 'pengeluaran') tab = 'pengeluaran'; } catch (e) {}
 let filter = 'semua';
 
 function simpan() {
@@ -195,7 +248,7 @@ function isiPilihanBulan() {
     sel.appendChild(opt);
   }
   sel.value = keyBulan(now);
-  sel.onchange = render;
+  sel.onchange = renderSemua;
 }
 
 function aktifDiBulan(p, b) {
@@ -242,14 +295,14 @@ function simpanPenghuni() {
   };
   if (lama) data.penghuni = data.penghuni.map(x => x.id === editId ? obj : x);
   else data.penghuni.push(obj);
-  simpan(); tutupForm(); render();
+  simpan(); tutupForm(); renderSemua();
 }
 
 function hapus(id) {
   const p = data.penghuni.find(x => x.id === id);
   if (!confirm(`Hapus ${p.nama} beserta seluruh riwayat pembayarannya?\n\nKalau penghuni hanya pindah keluar, lebih baik isi kolom "Keluar" lewat Edit.`)) return;
   data.penghuni = data.penghuni.filter(x => x.id !== id);
-  simpan(); render();
+  simpan(); renderSemua();
 }
 
 function togglePaid(id) {
@@ -263,7 +316,7 @@ function togglePaid(id) {
     const d = new Date();
     p.bayar[b] = keyBulan(d) + '-' + String(d.getDate()).padStart(2, '0');
   }
-  simpan(); render();
+  simpan(); renderSemua();
 }
 
 function getTemplate() { return data.template || TEMPLATE_DEFAULT; }
@@ -333,6 +386,111 @@ function render() {
   }).join('');
 }
 
+// ---------- Tab ----------
+function setTab(t) {
+  tab = t;
+  try { localStorage.setItem(TAB_KEY, t); } catch (e) {}
+  document.getElementById('tabPenghuni').classList.toggle('hidden', t !== 'penghuni');
+  document.getElementById('tabPengeluaran').classList.toggle('hidden', t !== 'pengeluaran');
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.getElementById('btnTambah').textContent = t === 'penghuni' ? '+ Penghuni' : '+ Pengeluaran';
+  tutupForm(); tutupFormKeluar();
+}
+function tambah() { tab === 'penghuni' ? bukaForm() : bukaFormKeluar(); }
+function renderSemua() { render(); renderKeluar(); }
+
+// ---------- Pengeluaran ----------
+function hariIni() { const d = new Date(); return keyBulan(d) + '-' + String(d.getDate()).padStart(2, '0'); }
+
+function pemasukanBulan(b) {
+  return data.penghuni.filter(p => aktifDiBulan(p, b) && p.bayar?.[b]).reduce((s, p) => s + p.tagihan, 0);
+}
+
+function bukaFormKeluar(k) {
+  editKeluarId = k ? k.id : null;
+  const set = (id, v) => document.getElementById(id).value = v ?? '';
+  set('kKategori', k ? k.kategori : 'listrik');
+  set('kJumlah', k?.jumlah); set('kKwh', k?.kwh); set('kCatatan', k?.catatan);
+  const b = bulanDipilih();
+  set('kTanggal', k ? k.tanggal : (b === keyBulan(new Date()) ? hariIni() : b + '-01'));
+  if (!k) isiOtomatisKeluar();
+  aturKwh();
+  document.getElementById('formKeluar').classList.remove('hidden');
+  document.getElementById('kJumlah').focus();
+}
+function tutupFormKeluar() { editKeluarId = null; document.getElementById('formKeluar').classList.add('hidden'); }
+function aturKwh() { document.getElementById('kKwhBox').classList.toggle('hidden', document.getElementById('kKategori').value !== 'listrik'); }
+
+// Isi jumlah dengan nominal terakhir di kategori yang sama (WiFi biasanya tetap tiap bulan).
+function isiOtomatisKeluar() {
+  aturKwh();
+  if (editKeluarId) return;
+  const kat = document.getElementById('kKategori').value;
+  const terakhir = data.pengeluaran.filter(k => k.kategori === kat).sort((a, b) => (b.tanggal || b.bulan).localeCompare(a.tanggal || a.bulan))[0];
+  document.getElementById('kJumlah').value = terakhir ? terakhir.jumlah : '';
+}
+
+function simpanKeluar() {
+  const val = id => document.getElementById(id).value.trim();
+  const jumlah = Number(val('kJumlah'));
+  if (!jumlah) { alert('Jumlah wajib diisi.'); return; }
+  const lama = editKeluarId ? data.pengeluaran.find(x => x.id === editKeluarId) : null;
+  const kategori = val('kKategori');
+  const obj = {
+    id: editKeluarId || uid(),
+    bulan: lama ? lama.bulan : bulanDipilih(),
+    kategori,
+    jumlah,
+    tanggal: val('kTanggal'),
+    kwh: kategori === 'listrik' && val('kKwh') ? Number(val('kKwh')) : null,
+    catatan: val('kCatatan')
+  };
+  if (lama) data.pengeluaran = data.pengeluaran.map(x => x.id === editKeluarId ? obj : x);
+  else data.pengeluaran.push(obj);
+  simpan(); tutupFormKeluar(); renderKeluar();
+}
+
+function hapusKeluar(id) {
+  if (!confirm('Hapus catatan pengeluaran ini?')) return;
+  data.pengeluaran = data.pengeluaran.filter(x => x.id !== id);
+  simpan(); renderKeluar();
+}
+
+function renderKeluar() {
+  const b = bulanDipilih();
+  const list = data.pengeluaran.filter(k => k.bulan === b).sort((x, y) => (y.tanggal || '').localeCompare(x.tanggal || ''));
+  const perKat = { listrik: 0, wifi: 0, lainnya: 0 };
+  list.forEach(k => perKat[k.kategori] = (perKat[k.kategori] || 0) + k.jumlah);
+  const keluar = list.reduce((s, k) => s + k.jumlah, 0);
+  const masuk = pemasukanBulan(b);
+  const saldo = masuk - keluar;
+  document.getElementById('kMasuk').textContent = rupiah(masuk);
+  document.getElementById('kKeluar').textContent = rupiah(keluar);
+  const elSaldo = document.getElementById('kSaldo');
+  elSaldo.textContent = (saldo < 0 ? '-' : '') + rupiah(Math.abs(saldo));
+  elSaldo.className = saldo < 0 ? 'neg' : (saldo > 0 ? 'pos' : '');
+  document.getElementById('kListrik').textContent = rupiah(perKat.listrik);
+  document.getElementById('kWifi').textContent = rupiah(perKat.wifi);
+  document.getElementById('kLain').textContent = rupiah(perKat.lainnya);
+
+  const el = document.getElementById('daftarKeluar');
+  if (!list.length) { el.innerHTML = `<div class="empty">Belum ada pengeluaran di ${namaBulan(b)}.<br>Tekan "+ Pengeluaran" untuk mencatat.</div>`; return; }
+  el.innerHTML = list.map(k => `
+    <div class="card">
+      <div class="row">
+        <div>
+          <div class="name">${KATEGORI[k.kategori] || esc(k.kategori)}${k.kwh ? ' · ' + k.kwh.toLocaleString('id-ID') + ' kWh' : ''}</div>
+          <div class="sub">${k.tanggal ? esc(k.tanggal) : ''}${k.catatan ? (k.tanggal ? ' · ' : '') + esc(k.catatan) : ''}</div>
+        </div>
+        <b>${rupiah(k.jumlah)}</b>
+      </div>
+      <div class="actions">
+        <button class="btn-light" onclick="bukaFormKeluar(data.pengeluaran.find(x => x.id === '${k.id}'))">Edit</button>
+        <button class="btn-danger" onclick="hapusKeluar('${k.id}')">Hapus</button>
+      </div>
+    </div>`).join('');
+}
+
 function unduh(nama, isi, tipe) {
   const blob = new Blob([isi], { type: tipe });
   const a = document.createElement('a');
@@ -355,10 +513,11 @@ function imporJSON(input) {
     try {
       const baru = JSON.parse(r.result);
       if (!Array.isArray(baru.penghuni)) throw new Error('format');
-      if (!confirm(`Pulihkan ${baru.penghuni.length} penghuni dari cadangan? Data di HP ini akan diganti.`)) return;
+      if (!confirm(`Pulihkan ${baru.penghuni.length} penghuni dan ${(baru.pengeluaran || []).length} catatan pengeluaran dari cadangan? Data di HP ini akan diganti.`)) return;
+      if (!Array.isArray(baru.pengeluaran)) baru.pengeluaran = [];
       data = baru; simpan();
       document.getElementById('template').value = getTemplate();
-      render(); alert('Data berhasil dipulihkan.');
+      renderSemua(); alert('Data berhasil dipulihkan.');
     } catch (e) { alert('File cadangan tidak valid.'); }
     input.value = '';
   };
@@ -373,6 +532,11 @@ function eksporCSV() {
     const st = statusBayar(p, b);
     baris.push([p.kamar, p.nama, p.hp, p.tagihan, p.jatuhTempo, st, p.bayar?.[b] || ''].map(q).join(';'));
   });
+  const keluar = data.pengeluaran.filter(k => k.bulan === b);
+  baris.push('', ['Pengeluaran', 'Tanggal', 'Jumlah', 'kWh', 'Catatan'].map(q).join(';'));
+  keluar.forEach(k => baris.push([KATEGORI[k.kategori] || k.kategori, k.tanggal, k.jumlah, k.kwh ?? '', k.catatan].map(q).join(';')));
+  const totKeluar = keluar.reduce((s, k) => s + k.jumlah, 0), masuk = pemasukanBulan(b);
+  baris.push('', [q('Pemasukan'), q(masuk)].join(';'), [q('Pengeluaran'), q(totKeluar)].join(';'), [q('Sisa bersih'), q(masuk - totKeluar)].join(';'));
   unduh(`tagihan-kost-${b}.csv`, '﻿' + baris.join('\r\n'), 'text/csv;charset=utf-8');
 }
 
@@ -396,7 +560,8 @@ terapkanTema();
 
 isiPilihanBulan();
 document.getElementById('template').value = getTemplate();
-render();
+setTab(tab);
+renderSemua();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
